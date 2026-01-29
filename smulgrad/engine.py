@@ -400,8 +400,8 @@ class Tensor():
         elif self.data.ndim == 1:
 
             def _backward():
-                self.grad += np.squeez(out.grad[None, :]
-                                       @ other.data.swapaxes(-1, -2), axis=-2)
+                self.grad += np.squeeze(out.grad[None, :]
+                                        @ other.data.swapaxes(-1, -2), axis=-2)
                 other.grad += self.data[:, None] @ out.grad[None, :]
 
             out._backward = _backward
