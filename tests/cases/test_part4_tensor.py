@@ -108,6 +108,61 @@ class TestTensorElementwise:
         expected = np.array([3.0, 5.0, 7.0])
         np.testing.assert_array_equal(get_tensor_data(d), expected)
 
+    def test_tensor_rsub_forward(self):
+        """Test scalar - tensor (calls __rsub__)."""
+        a = create_tensor(np.array([[1.0, 2.0], [3.0, 4.0]]))
+        c = 10.0 - a
+        expected = np.array([[9.0, 8.0], [7.0, 6.0]])
+        np.testing.assert_array_equal(get_tensor_data(c), expected)
+
+    def test_tensor_rsub_backward(self):
+        """Test backward pass through tensor __rsub__."""
+        a = create_tensor(np.array([[1.0, 2.0], [3.0, 4.0]]))
+        c = 10.0 - a
+        s = run_tensor_sum(c)
+        run_tensor_backward(s)
+        # d(10 - a)/da = -1 for each element
+        expected_grad = -np.ones((2, 2))
+        np.testing.assert_array_equal(get_tensor_grad(a), expected_grad)
+
+    def test_tensor_rtruediv_forward(self):
+        """Test scalar / tensor (calls __rtruediv__)."""
+        a = create_tensor(np.array([[1.0, 2.0], [4.0, 5.0]]))
+        c = 20.0 / a
+        expected = np.array([[20.0, 10.0], [5.0, 4.0]])
+        np.testing.assert_array_equal(get_tensor_data(c), expected)
+
+    def test_tensor_rtruediv_backward(self):
+        """Test backward pass through tensor __rtruediv__."""
+        a_data = np.array([[1.0, 2.0], [4.0, 5.0]])
+
+        def f(x):
+            a = create_tensor(x.copy())
+            c = 20.0 / a
+            s = run_tensor_sum(c)
+            return float(get_tensor_data(s))
+
+        # Analytical
+        a = create_tensor(a_data.copy())
+        c = 20.0 / a
+        s = run_tensor_sum(c)
+        run_tensor_backward(s)
+        grad_ana = get_tensor_grad(a).copy()
+
+        # Numerical
+        grad_num = numerical_gradient(f, a_data.copy())
+
+        np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-6)
+
+    def test_tensor_neg_backward(self):
+        """Test backward through tensor negation."""
+        a = create_tensor(np.array([[1.0, 2.0], [3.0, 4.0]]))
+        b = -a
+        run_tensor_backward(b)
+        # d(-a)/da = -1 for each element
+        expected = -np.ones((2, 2))
+        np.testing.assert_array_equal(get_tensor_grad(a), expected)
+
 
 class TestTensorBackward:
     """Test Tensor backward pass (2 points)."""
@@ -141,6 +196,32 @@ class TestTensorBackward:
         run_tensor_backward(c)
         assert get_tensor_grad(c).shape == (2, 2)
         np.testing.assert_array_equal(get_tensor_grad(c), np.ones((2, 2)))
+
+    def test_tensor_div_backward(self):
+        """Test tensor / tensor backward pass."""
+        a_data = np.array([[1.0, 2.0], [3.0, 4.0]])
+        b_data = np.array([[2.0, 4.0], [1.0, 2.0]])
+
+        def f(a_np, b_np):
+            a = create_tensor(a_np.copy())
+            b = create_tensor(b_np.copy())
+            c = a / b
+            s = run_tensor_sum(c)
+            return float(get_tensor_data(s))
+
+        a = create_tensor(a_data.copy())
+        b = create_tensor(b_data.copy())
+        c = a / b
+        s = run_tensor_sum(c)
+        run_tensor_backward(s)
+        grad_a_ana = get_tensor_grad(a).copy()
+        grad_b_ana = get_tensor_grad(b).copy()
+
+        grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
+        grad_b_num = numerical_gradient(lambda x: f(a_data, x), b_data.copy())
+
+        np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-6)
+        np.testing.assert_allclose(grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-6)
 
 
 class TestTensorBroadcast:
@@ -277,6 +358,25 @@ class TestTensorSum:
         np.testing.assert_array_equal(get_tensor_grad(a), get_tensor_data(b))
         np.testing.assert_array_equal(get_tensor_grad(b), np.array([[1.0, 2.0], [3.0, 4.0]]))
 
+    def test_sum_keepdims_backward(self):
+        """Test sum backward with keepdims=True."""
+        a_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+
+        def f(x):
+            a = create_tensor(x.copy())
+            b = run_tensor_sum(a, axis=1, keepdims=True)
+            s = run_tensor_sum(b)
+            return float(get_tensor_data(s))
+
+        a = create_tensor(a_data.copy())
+        b = run_tensor_sum(a, axis=1, keepdims=True)
+        s = run_tensor_sum(b)
+        run_tensor_backward(s)
+        grad_ana = get_tensor_grad(a).copy()
+
+        grad_num = numerical_gradient(f, a_data.copy())
+        np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-6)
+
 
 class TestTensorMean:
     """Test mean reduction (2 points)."""
@@ -311,6 +411,25 @@ class TestTensorMean:
         assert get_tensor_grad(a).shape == (2, 3), "Gradient shape must match input shape"
         # Each element contributes 1/3 to its row's mean
         np.testing.assert_allclose(get_tensor_grad(a), np.full((2, 3), 1.0/3.0))
+
+    def test_mean_keepdims_backward(self):
+        """Test mean backward with keepdims=True."""
+        a_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+
+        def f(x):
+            a = create_tensor(x.copy())
+            b = run_tensor_mean(a, axis=1, keepdims=True)
+            s = run_tensor_sum(b)
+            return float(get_tensor_data(s))
+
+        a = create_tensor(a_data.copy())
+        b = run_tensor_mean(a, axis=1, keepdims=True)
+        s = run_tensor_sum(b)
+        run_tensor_backward(s)
+        grad_ana = get_tensor_grad(a).copy()
+
+        grad_num = numerical_gradient(f, a_data.copy())
+        np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-6)
 
 
 class TestTensorMax:
@@ -358,6 +477,25 @@ class TestTensorMax:
         expected = np.array([[0.5, 0.5], [0.0, 0.0]])
         np.testing.assert_array_equal(get_tensor_grad(a), expected)
 
+    def test_max_keepdims_backward(self):
+        """Test max backward with keepdims=True."""
+        a_data = np.array([[1.0, 4.0, 2.0], [3.0, 2.0, 5.0]])
+
+        def f(x):
+            a = create_tensor(x.copy())
+            b = run_tensor_max(a, axis=1, keepdims=True)
+            s = run_tensor_sum(b)
+            return float(get_tensor_data(s))
+
+        a = create_tensor(a_data.copy())
+        b = run_tensor_max(a, axis=1, keepdims=True)
+        s = run_tensor_sum(b)
+        run_tensor_backward(s)
+        grad_ana = get_tensor_grad(a).copy()
+
+        grad_num = numerical_gradient(f, a_data.copy())
+        np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-6)
+
 
 class TestTensorReshape:
     """Test reshape operation (2 points)."""
@@ -390,6 +528,58 @@ class TestTensorReshape:
         b = run_tensor_reshape(a, (-1,))
         assert get_tensor_data(b).shape == (6,)
 
+    def test_reshape_backward_in_chain(self):
+        """Test reshape backward in complex computation chain."""
+        a_data = np.array([[1.0, 2.0], [3.0, 4.0]])
+        b_data = np.array([1.0, 2.0, 3.0, 4.0])
+
+        def f(x, y):
+            a = create_tensor(x.copy())
+            b = create_tensor(y.copy())
+            # Reshape a to 1D, multiply with b, sum
+            a_flat = run_tensor_reshape(a, (4,))
+            c = run_tensor_mul(a_flat, b)
+            s = run_tensor_sum(c)
+            return float(get_tensor_data(s))
+
+        a = create_tensor(a_data.copy())
+        b = create_tensor(b_data.copy())
+        a_flat = run_tensor_reshape(a, (4,))
+        c = run_tensor_mul(a_flat, b)
+        s = run_tensor_sum(c)
+        run_tensor_backward(s)
+        grad_a_ana = get_tensor_grad(a).copy()
+
+        grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
+        np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-6)
+
+    def test_reshape_gradient_accumulation(self):
+        """Test reshape backward accumulates gradients when tensor used in multiple paths."""
+        a_data = np.array([[1.0, 2.0], [3.0, 4.0]])
+
+        def f(x):
+            a = create_tensor(x.copy())
+            # Use original tensor in TWO different reshape paths
+            a_flat1 = run_tensor_reshape(a, (4,))
+            s1 = run_tensor_sum(a_flat1)
+            a_flat2 = run_tensor_reshape(a, (1, 4))
+            s2 = run_tensor_sum(a_flat2)
+            total = run_tensor_add(s1, s2)
+            return float(get_tensor_data(total))
+
+        a = create_tensor(a_data.copy())
+        a_flat1 = run_tensor_reshape(a, (4,))
+        s1 = run_tensor_sum(a_flat1)
+        a_flat2 = run_tensor_reshape(a, (1, 4))
+        s2 = run_tensor_sum(a_flat2)
+        total = run_tensor_add(s1, s2)
+        run_tensor_backward(total)
+        grad_ana = get_tensor_grad(a).copy()
+
+        grad_num = numerical_gradient(f, a_data.copy())
+        # Gradient should be 2 for each element (used in two paths)
+        np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-6)
+
 
 class TestTensorTranspose:
     """Test transpose operation (1 point)."""
@@ -409,6 +599,33 @@ class TestTensorTranspose:
         run_tensor_backward(c)
         # Gradient should be transposed back to original shape
         np.testing.assert_array_equal(get_tensor_grad(a), np.ones((3, 2)))
+
+    def test_transpose_gradient_accumulation(self):
+        """Test transpose backward accumulates gradients when tensor used in multiple paths."""
+        a_data = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+
+        def f(x):
+            a = create_tensor(x.copy())
+            # Use original tensor in TWO different transpose paths
+            a_t1 = run_tensor_transpose(a)
+            s1 = run_tensor_sum(a_t1)
+            a_t2 = run_tensor_transpose(a)
+            s2 = run_tensor_sum(a_t2)
+            total = run_tensor_add(s1, s2)
+            return float(get_tensor_data(total))
+
+        a = create_tensor(a_data.copy())
+        a_t1 = run_tensor_transpose(a)
+        s1 = run_tensor_sum(a_t1)
+        a_t2 = run_tensor_transpose(a)
+        s2 = run_tensor_sum(a_t2)
+        total = run_tensor_add(s1, s2)
+        run_tensor_backward(total)
+        grad_ana = get_tensor_grad(a).copy()
+
+        grad_num = numerical_gradient(f, a_data.copy())
+        # Gradient should be 2 for each element (used in two paths)
+        np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-6)
 
 
 class TestTensorNumericalGradient:
@@ -471,3 +688,5 @@ class TestTensorNumericalGradient:
 
         np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-5)
         np.testing.assert_allclose(grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-5)
+
+

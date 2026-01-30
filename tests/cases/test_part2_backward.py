@@ -219,6 +219,41 @@ class TestBackwardOps:
         assert_close(get_value_grad(a), 0.5)
         assert_close(get_value_grad(b), -1.5)
 
+    def test_backward_rsub(self):
+        """Test _backward of c = scalar - a (calls __rsub__)."""
+        a = create_value(3.0)
+        c = 5.0 - a  # = 2.0, calls __rsub__
+
+        c.grad = 1.0
+        c._backward()
+
+        # If rsub is composed, propagate through intermediate nodes
+        for node in c._prev:
+            if node._prev:
+                node._backward()
+
+        # d(5 - a)/da = -1
+        assert_close(get_value_grad(a), -1.0)
+
+    def test_backward_rtruediv(self):
+        """Test _backward of c = scalar / a (calls __rtruediv__)."""
+        a = create_value(2.0)
+        c = 6.0 / a  # = 3.0, calls __rtruediv__
+
+        c.grad = 1.0
+        c._backward()
+
+        # If rtruediv is composed, propagate through intermediate nodes
+        for node in c._prev:
+            if node._prev:
+                node._backward()
+                for n2 in node._prev:
+                    if n2._prev:
+                        n2._backward()
+
+        # d(6/a)/da = -6/a^2 = -6/4 = -1.5
+        assert_close(get_value_grad(a), -1.5)
+
 
 class TestBackwardFull:
     """Test full backward pass with complex graphs (5 points)."""

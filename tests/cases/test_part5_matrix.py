@@ -26,8 +26,10 @@ class TestMatmul:
 
     def test_matmul_2d_basic(self):
         """Test basic 2D matrix multiplication."""
-        a = create_tensor(np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]))  # (3, 2)
-        b = create_tensor(np.array([[7.0, 8.0, 9.0], [10.0, 11.0, 12.0]]))  # (2, 3)
+        a = create_tensor(
+            np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]))  # (3, 2)
+        b = create_tensor(
+            np.array([[7.0, 8.0, 9.0], [10.0, 11.0, 12.0]]))  # (2, 3)
         c = run_matmul(a, b)
 
         expected = np.array([
@@ -39,8 +41,10 @@ class TestMatmul:
 
     def test_matmul_backward_left(self):
         """Test matmul backward for left operand."""
-        a = create_tensor(np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]))  # (3, 2)
-        b = create_tensor(np.array([[7.0, 8.0, 9.0], [10.0, 11.0, 12.0]]))  # (2, 3)
+        a = create_tensor(
+            np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]))  # (3, 2)
+        b = create_tensor(
+            np.array([[7.0, 8.0, 9.0], [10.0, 11.0, 12.0]]))  # (2, 3)
         c = run_matmul(a, b)
         s = run_tensor_sum(c)
         run_tensor_backward(s)
@@ -54,8 +58,10 @@ class TestMatmul:
 
     def test_matmul_backward_right(self):
         """Test matmul backward for right operand."""
-        a = create_tensor(np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]))  # (3, 2)
-        b = create_tensor(np.array([[7.0, 8.0, 9.0], [10.0, 11.0, 12.0]]))  # (2, 3)
+        a = create_tensor(
+            np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]))  # (3, 2)
+        b = create_tensor(
+            np.array([[7.0, 8.0, 9.0], [10.0, 11.0, 12.0]]))  # (2, 3)
         c = run_matmul(a, b)
         s = run_tensor_sum(c)
         run_tensor_backward(s)
@@ -102,8 +108,10 @@ class TestMatmul:
         grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
         grad_b_num = numerical_gradient(lambda x: f(a_data, x), b_data.copy())
 
-        np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-6)
-        np.testing.assert_allclose(grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-6)
+        np.testing.assert_allclose(
+            grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-6)
+        np.testing.assert_allclose(
+            grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-6)
 
 
 class TestBatchedMatmul:
@@ -155,6 +163,35 @@ class TestBatchedMatmul:
         grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
         grad_b_num = numerical_gradient(lambda x: f(a_data, x), b_data.copy())
 
+        np.testing.assert_allclose(
+            grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(
+            grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-5)
+
+    def test_batched_matmul_4d_backward(self):
+        """Test 4D batched matmul backward."""
+        np.random.seed(42)
+        a_data = np.random.randn(2, 3, 4, 5)
+        b_data = np.random.randn(2, 3, 5, 6)
+
+        def f(a_np, b_np):
+            a = create_tensor(a_np.copy())
+            b = create_tensor(b_np.copy())
+            c = run_matmul(a, b)
+            s = run_tensor_sum(c)
+            return float(get_tensor_data(s))
+
+        a = create_tensor(a_data.copy())
+        b = create_tensor(b_data.copy())
+        c = run_matmul(a, b)
+        s = run_tensor_sum(c)
+        run_tensor_backward(s)
+        grad_a_ana = get_tensor_grad(a).copy()
+        grad_b_ana = get_tensor_grad(b).copy()
+
+        grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
+        grad_b_num = numerical_gradient(lambda x: f(a_data, x), b_data.copy())
+
         np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-5)
         np.testing.assert_allclose(grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-5)
 
@@ -173,6 +210,93 @@ class TestBatchedMatmul:
         expected = a_data @ b_data
         assert get_tensor_data(c).shape == (2, 3, 5)
         np.testing.assert_allclose(get_tensor_data(c), expected)
+
+    def test_batched_broadcast_backward_left(self):
+        """Test backward when left operand has batch, right doesn't."""
+        np.random.seed(42)
+        a_data = np.random.randn(2, 3, 4)  # batched
+        b_data = np.random.randn(4, 5)      # not batched
+
+        def f(a_np, b_np):
+            a = create_tensor(a_np.copy())
+            b = create_tensor(b_np.copy())
+            c = run_matmul(a, b)
+            s = run_tensor_sum(c)
+            return float(get_tensor_data(s))
+
+        # Analytical
+        a = create_tensor(a_data.copy())
+        b = create_tensor(b_data.copy())
+        c = run_matmul(a, b)
+        s = run_tensor_sum(c)
+        run_tensor_backward(s)
+        grad_a_ana = get_tensor_grad(a).copy()
+        grad_b_ana = get_tensor_grad(b).copy()
+
+        # Numerical
+        grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
+        grad_b_num = numerical_gradient(lambda x: f(a_data, x), b_data.copy())
+
+        np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-5)
+
+    def test_batched_broadcast_backward_right(self):
+        """Test backward when right operand has batch, left doesn't."""
+        np.random.seed(42)
+        a_data = np.random.randn(3, 4)       # not batched
+        b_data = np.random.randn(2, 4, 5)    # batched
+
+        def f(a_np, b_np):
+            a = create_tensor(a_np.copy())
+            b = create_tensor(b_np.copy())
+            c = run_matmul(a, b)
+            s = run_tensor_sum(c)
+            return float(get_tensor_data(s))
+
+        # Analytical
+        a = create_tensor(a_data.copy())
+        b = create_tensor(b_data.copy())
+        c = run_matmul(a, b)
+        s = run_tensor_sum(c)
+        run_tensor_backward(s)
+        grad_a_ana = get_tensor_grad(a).copy()
+        grad_b_ana = get_tensor_grad(b).copy()
+
+        # Numerical
+        grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
+        grad_b_num = numerical_gradient(lambda x: f(a_data, x), b_data.copy())
+
+        np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-5)
+
+    def test_batched_4d_broadcast_backward(self):
+        """Test backward with 4D batched matmul."""
+        np.random.seed(42)
+        a_data = np.random.randn(2, 3, 4, 5)  # 4D batched
+        b_data = np.random.randn(5, 6)         # 2D
+
+        def f(a_np, b_np):
+            a = create_tensor(a_np.copy())
+            b = create_tensor(b_np.copy())
+            c = run_matmul(a, b)
+            s = run_tensor_sum(c)
+            return float(get_tensor_data(s))
+
+        # Analytical
+        a = create_tensor(a_data.copy())
+        b = create_tensor(b_data.copy())
+        c = run_matmul(a, b)
+        s = run_tensor_sum(c)
+        run_tensor_backward(s)
+        grad_a_ana = get_tensor_grad(a).copy()
+        grad_b_ana = get_tensor_grad(b).copy()
+
+        # Numerical
+        grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
+        grad_b_num = numerical_gradient(lambda x: f(a_data, x), b_data.copy())
+
+        np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-5)
 
 
 class TestMatvec:
@@ -212,17 +336,50 @@ class TestMatvec:
         grad_a_num = numerical_gradient(lambda m: f(m, x_data), a_data.copy())
         grad_x_num = numerical_gradient(lambda v: f(a_data, v), x_data.copy())
 
-        np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-6)
-        np.testing.assert_allclose(grad_x_ana, grad_x_num, rtol=1e-4, atol=1e-6)
+        np.testing.assert_allclose(
+            grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-6)
+        np.testing.assert_allclose(
+            grad_x_ana, grad_x_num, rtol=1e-4, atol=1e-6)
 
     def test_vecmat_basic(self):
         """Test vector-matrix multiplication."""
         x = create_tensor(np.array([1.0, 2.0, 3.0]))  # (3,)
-        a = create_tensor(np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]))  # (3, 2)
+        a = create_tensor(
+            np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]))  # (3, 2)
         y = run_matmul(x, a)
 
         expected = np.array([22.0, 28.0])
         np.testing.assert_array_equal(get_tensor_data(y), expected)
+
+    def test_vecmat_backward(self):
+        """Test vector-matrix multiplication backward."""
+        x_data = np.array([1.0, 2.0, 3.0])
+        a_data = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+
+        def f(x_np, a_np):
+            x = create_tensor(x_np.copy())
+            a = create_tensor(a_np.copy())
+            y = run_matmul(x, a)
+            s = run_tensor_sum(y)
+            return float(get_tensor_data(s))
+
+        # Analytical gradient
+        x = create_tensor(x_data.copy())
+        a = create_tensor(a_data.copy())
+        y = run_matmul(x, a)
+        s = run_tensor_sum(y)
+        run_tensor_backward(s)
+        grad_x_ana = get_tensor_grad(x).copy()
+        grad_a_ana = get_tensor_grad(a).copy()
+
+        # Numerical gradient
+        grad_x_num = numerical_gradient(lambda v: f(v, a_data), x_data.copy())
+        grad_a_num = numerical_gradient(lambda m: f(x_data, m), a_data.copy())
+
+        np.testing.assert_allclose(
+            grad_x_ana, grad_x_num, rtol=1e-4, atol=1e-6)
+        np.testing.assert_allclose(
+            grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-6)
 
 
 class TestTensorActivations:
@@ -275,6 +432,28 @@ class TestTensorActivations:
         expected = 1.0 / np.array([[1.0, 2.0], [4.0, 5.0]])
         np.testing.assert_allclose(get_tensor_grad(a), expected)
 
+    def test_tensor_tanh_backward(self):
+        """Test tanh backward on tensor with numerical verification."""
+        a_data = np.array([[0.5, -0.5], [1.0, -1.0]])
+
+        def f(x):
+            a = create_tensor(x.copy())
+            b = a.tanh()
+            s = run_tensor_sum(b)
+            return float(get_tensor_data(s))
+
+        # Analytical
+        a = create_tensor(a_data.copy())
+        b = a.tanh()
+        s = run_tensor_sum(b)
+        run_tensor_backward(s)
+        grad_ana = get_tensor_grad(a).copy()
+
+        # Numerical
+        grad_num = numerical_gradient(f, a_data.copy())
+
+        np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-6)
+
 
 class TestMatrixChain:
     """Test chains of matrix operations (3 points)."""
@@ -325,13 +504,19 @@ class TestMatrixChain:
         grad_W2_ana = get_tensor_grad(W2).copy()
 
         # Numerical gradient
-        grad_X_num = numerical_gradient(lambda x: f(x, W1_data, W2_data), X_data.copy())
-        grad_W1_num = numerical_gradient(lambda w: f(X_data, w, W2_data), W1_data.copy())
-        grad_W2_num = numerical_gradient(lambda w: f(X_data, W1_data, w), W2_data.copy())
+        grad_X_num = numerical_gradient(
+            lambda x: f(x, W1_data, W2_data), X_data.copy())
+        grad_W1_num = numerical_gradient(
+            lambda w: f(X_data, w, W2_data), W1_data.copy())
+        grad_W2_num = numerical_gradient(
+            lambda w: f(X_data, W1_data, w), W2_data.copy())
 
-        np.testing.assert_allclose(grad_X_ana, grad_X_num, rtol=1e-4, atol=1e-5)
-        np.testing.assert_allclose(grad_W1_ana, grad_W1_num, rtol=1e-4, atol=1e-5)
-        np.testing.assert_allclose(grad_W2_ana, grad_W2_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(
+            grad_X_ana, grad_X_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(
+            grad_W1_ana, grad_W1_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(
+            grad_W2_ana, grad_W2_num, rtol=1e-4, atol=1e-5)
 
     def test_matrix_chain_with_bias(self):
         """Test chain: relu(X @ W1 + b1) @ W2 + b2"""
@@ -385,7 +570,11 @@ class TestMatrixChain:
             lambda b: f(X_data, W1_data, b1_data, W2_data, b), b2_data.copy()
         )
 
-        np.testing.assert_allclose(grad_W1_ana, grad_W1_num, rtol=1e-4, atol=1e-5)
-        np.testing.assert_allclose(grad_b1_ana, grad_b1_num, rtol=1e-4, atol=1e-5)
-        np.testing.assert_allclose(grad_W2_ana, grad_W2_num, rtol=1e-4, atol=1e-5)
-        np.testing.assert_allclose(grad_b2_ana, grad_b2_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(
+            grad_W1_ana, grad_W1_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(
+            grad_b1_ana, grad_b1_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(
+            grad_W2_ana, grad_W2_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(
+            grad_b2_ana, grad_b2_num, rtol=1e-4, atol=1e-5)
