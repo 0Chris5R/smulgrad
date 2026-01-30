@@ -159,7 +159,8 @@ class Tensor():
     @staticmethod
     def _unbroadcast(grad, child):
         out_shape = grad.shape
-        in_shape = child.data.shape
+        child_data = np.asarray(child.data)
+        in_shape = child_data.shape
         ndim_diff = len(out_shape) - len(in_shape)
         in_shape = (1,) * ndim_diff + in_shape
 
@@ -319,7 +320,10 @@ class Tensor():
         out = Tensor(value, _op="sum", _children=(self,))
 
         def _backward():
-            self.grad += self._broadcast(out.grad, axis)
+            if keepdims is False:
+                self.grad += self._broadcast(out.grad, axis)
+            else:
+                self.grad += out.grad
         out._backward = _backward
 
         return out
@@ -329,8 +333,12 @@ class Tensor():
         out = Tensor(value, _op="mean", _children=(self,))
 
         def _backward():
-            self.grad += (1/np.size(self.data, axis=axis)) * \
-                self._broadcast(out.grad, axis)
+            if keepdims is False:
+                self.grad += (1/np.size(self.data, axis=axis)) * \
+                    self._broadcast(out.grad, axis)
+            else:
+                self.grad += (1/np.size(self.data, axis=axis)) * out.grad
+
         out._backward = _backward
 
         return out
@@ -342,7 +350,10 @@ class Tensor():
         def _backward():
             mask = self.data == value
             count = mask.sum(axis=axis, keepdims=True)
-            gradient = self._broadcast(out.grad, axis)
+            if keepdims is False:
+                gradient = self._broadcast(out.grad, axis)
+            else:
+                gradient = out.grad
             self.grad += gradient * (mask/count)
         out._backward = _backward
 
@@ -353,7 +364,7 @@ class Tensor():
         out = Tensor(value, _op="reshape", _children=(self,))
 
         def _backward():
-            self.grad = out.grad.reshape(self.data.shape)
+            self.grad += out.grad.reshape(self.data.shape)
 
         out._backward = _backward
 
@@ -364,7 +375,7 @@ class Tensor():
         out = Tensor(value, _op="transpose", _children=(self,))
 
         def _backward():
-            self.grad = out.grad.transpose(axes)
+            self.grad += out.grad.transpose(axes)
         out._backward = _backward
 
         return out
@@ -410,8 +421,10 @@ class Tensor():
         else:
 
             def _backward():
-                self.grad += out.grad @ other.data.swapaxes(-1, -2)
-                other.grad += self.data.swapaxes(-1, -2) @ out.grad
+                self.grad += self._unbroadcast(out.grad @
+                                               other.data.swapaxes(-1, -2), self)
+                other.grad += self._unbroadcast(
+                    self.data.swapaxes(-1, -2) @ out.grad, other)
 
             out._backward = _backward
 

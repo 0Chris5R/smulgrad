@@ -75,6 +75,14 @@ class TestReLU:
         assert_close(get_value_grad(a), 1.0)
         assert_close(get_value_grad(b), 1.0)
 
+    def test_relu_backward_zero(self):
+        """Test ReLU backward at exactly zero."""
+        a = create_value(0.0)
+        b = run_relu(a)
+        run_backward(b)
+        # At zero, gradient is typically 0 (subgradient choice)
+        assert_close(get_value_grad(a), 0.0)
+
 
 class TestExp:
     """Test exponential function (3 points)."""
@@ -176,6 +184,16 @@ class TestLog:
         # dc/db = log(a) = 1
         assert_close(get_value_grad(a), 3.0 / math.e)
         assert_close(get_value_grad(b), 1.0)
+
+    def test_log_small_value(self):
+        """Test log with small positive value (numerical stability)."""
+        a = create_value(1e-10)
+        b = run_log(a)
+        assert_close(get_value_data(b), math.log(1e-10))
+
+        run_backward(b)
+        # d(log(a))/da = 1/a = 1e10
+        assert_close(get_value_grad(a), 1e10)
 
 
 class TestTanh:

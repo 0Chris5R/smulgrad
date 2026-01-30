@@ -166,6 +166,30 @@ class TestSoftmax:
         sums = np.sum(get_tensor_data(probs), axis=-1)
         np.testing.assert_allclose(sums, np.ones(3), rtol=1e-5)
 
+    def test_softmax_backward(self):
+        """Test softmax backward pass via cross-entropy (the typical use case)."""
+        np.random.seed(42)
+        logits_data = np.random.randn(2, 4)
+        targets_data = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], dtype=np.float64)
+
+        def f(x):
+            logits = create_tensor(x.copy())
+            targets = create_tensor(targets_data.copy())
+            loss = run_cross_entropy(logits, targets)
+            return float(get_tensor_data(loss))
+
+        # Analytical
+        logits = create_tensor(logits_data.copy())
+        targets = create_tensor(targets_data.copy())
+        loss = run_cross_entropy(logits, targets)
+        run_tensor_backward(loss)
+        grad_ana = get_tensor_grad(logits).copy()
+
+        # Numerical
+        grad_num = numerical_gradient(f, logits_data.copy())
+
+        np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-5)
+
 
 class TestCrossEntropy:
     """Test cross-entropy loss (3 points)."""
@@ -231,6 +255,28 @@ class TestCrossEntropy:
             atol=1e-5
         )
 
+    def test_cross_entropy_numerical_gradient(self):
+        """Verify cross-entropy gradient numerically."""
+        np.random.seed(42)
+        logits_data = np.random.randn(2, 3)
+        targets_data = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+
+        def f(x):
+            logits = create_tensor(x.copy())
+            targets = create_tensor(targets_data.copy())
+            loss = run_cross_entropy(logits, targets)
+            return float(get_tensor_data(loss))
+
+        logits = create_tensor(logits_data.copy())
+        targets = create_tensor(targets_data.copy())
+        loss = run_cross_entropy(logits, targets)
+        run_tensor_backward(loss)
+        grad_ana = get_tensor_grad(logits).copy()
+
+        grad_num = numerical_gradient(f, logits_data.copy())
+
+        np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-5)
+
 
 class TestSGD:
     """Test SGD optimizer (2 points)."""
@@ -279,6 +325,23 @@ class TestSGD:
 
         np.testing.assert_allclose(get_tensor_data(w1), w1_before - 0.01 * grad_w1)
         np.testing.assert_allclose(get_tensor_data(w2), w2_before - 0.01 * grad_w2)
+
+    def test_sgd_custom_learning_rate(self):
+        """Test SGD with different learning rates."""
+        w = create_tensor(np.array([1.0, 2.0, 3.0]))
+        x = create_tensor(np.array([1.0, 1.0, 1.0]))
+        y = run_tensor_mul(w, x)
+        s = run_tensor_sum(y)
+        run_tensor_backward(s)
+
+        w_before = get_tensor_data(w).copy()
+        grad_before = get_tensor_grad(w).copy()
+
+        # Test with larger learning rate
+        run_sgd_step([w], lr=0.5)
+
+        expected = w_before - 0.5 * grad_before
+        np.testing.assert_allclose(get_tensor_data(w), expected)
 
     def test_zero_grad(self):
         """Test zeroing gradients."""

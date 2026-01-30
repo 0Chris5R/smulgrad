@@ -168,6 +168,33 @@ class TestBatchedMatmul:
         np.testing.assert_allclose(
             grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-5)
 
+    def test_batched_matmul_4d_backward(self):
+        """Test 4D batched matmul backward."""
+        np.random.seed(42)
+        a_data = np.random.randn(2, 3, 4, 5)
+        b_data = np.random.randn(2, 3, 5, 6)
+
+        def f(a_np, b_np):
+            a = create_tensor(a_np.copy())
+            b = create_tensor(b_np.copy())
+            c = run_matmul(a, b)
+            s = run_tensor_sum(c)
+            return float(get_tensor_data(s))
+
+        a = create_tensor(a_data.copy())
+        b = create_tensor(b_data.copy())
+        c = run_matmul(a, b)
+        s = run_tensor_sum(c)
+        run_tensor_backward(s)
+        grad_a_ana = get_tensor_grad(a).copy()
+        grad_b_ana = get_tensor_grad(b).copy()
+
+        grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
+        grad_b_num = numerical_gradient(lambda x: f(a_data, x), b_data.copy())
+
+        np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-5)
+
     def test_batched_matmul_broadcast(self):
         """Test batched matmul with broadcasting."""
         np.random.seed(42)
@@ -183,6 +210,93 @@ class TestBatchedMatmul:
         expected = a_data @ b_data
         assert get_tensor_data(c).shape == (2, 3, 5)
         np.testing.assert_allclose(get_tensor_data(c), expected)
+
+    def test_batched_broadcast_backward_left(self):
+        """Test backward when left operand has batch, right doesn't."""
+        np.random.seed(42)
+        a_data = np.random.randn(2, 3, 4)  # batched
+        b_data = np.random.randn(4, 5)      # not batched
+
+        def f(a_np, b_np):
+            a = create_tensor(a_np.copy())
+            b = create_tensor(b_np.copy())
+            c = run_matmul(a, b)
+            s = run_tensor_sum(c)
+            return float(get_tensor_data(s))
+
+        # Analytical
+        a = create_tensor(a_data.copy())
+        b = create_tensor(b_data.copy())
+        c = run_matmul(a, b)
+        s = run_tensor_sum(c)
+        run_tensor_backward(s)
+        grad_a_ana = get_tensor_grad(a).copy()
+        grad_b_ana = get_tensor_grad(b).copy()
+
+        # Numerical
+        grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
+        grad_b_num = numerical_gradient(lambda x: f(a_data, x), b_data.copy())
+
+        np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-5)
+
+    def test_batched_broadcast_backward_right(self):
+        """Test backward when right operand has batch, left doesn't."""
+        np.random.seed(42)
+        a_data = np.random.randn(3, 4)       # not batched
+        b_data = np.random.randn(2, 4, 5)    # batched
+
+        def f(a_np, b_np):
+            a = create_tensor(a_np.copy())
+            b = create_tensor(b_np.copy())
+            c = run_matmul(a, b)
+            s = run_tensor_sum(c)
+            return float(get_tensor_data(s))
+
+        # Analytical
+        a = create_tensor(a_data.copy())
+        b = create_tensor(b_data.copy())
+        c = run_matmul(a, b)
+        s = run_tensor_sum(c)
+        run_tensor_backward(s)
+        grad_a_ana = get_tensor_grad(a).copy()
+        grad_b_ana = get_tensor_grad(b).copy()
+
+        # Numerical
+        grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
+        grad_b_num = numerical_gradient(lambda x: f(a_data, x), b_data.copy())
+
+        np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-5)
+
+    def test_batched_4d_broadcast_backward(self):
+        """Test backward with 4D batched matmul."""
+        np.random.seed(42)
+        a_data = np.random.randn(2, 3, 4, 5)  # 4D batched
+        b_data = np.random.randn(5, 6)         # 2D
+
+        def f(a_np, b_np):
+            a = create_tensor(a_np.copy())
+            b = create_tensor(b_np.copy())
+            c = run_matmul(a, b)
+            s = run_tensor_sum(c)
+            return float(get_tensor_data(s))
+
+        # Analytical
+        a = create_tensor(a_data.copy())
+        b = create_tensor(b_data.copy())
+        c = run_matmul(a, b)
+        s = run_tensor_sum(c)
+        run_tensor_backward(s)
+        grad_a_ana = get_tensor_grad(a).copy()
+        grad_b_ana = get_tensor_grad(b).copy()
+
+        # Numerical
+        grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
+        grad_b_num = numerical_gradient(lambda x: f(a_data, x), b_data.copy())
+
+        np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-5)
 
 
 class TestMatvec:
@@ -317,6 +431,28 @@ class TestTensorActivations:
         # Gradient of log(x) is 1/x
         expected = 1.0 / np.array([[1.0, 2.0], [4.0, 5.0]])
         np.testing.assert_allclose(get_tensor_grad(a), expected)
+
+    def test_tensor_tanh_backward(self):
+        """Test tanh backward on tensor with numerical verification."""
+        a_data = np.array([[0.5, -0.5], [1.0, -1.0]])
+
+        def f(x):
+            a = create_tensor(x.copy())
+            b = a.tanh()
+            s = run_tensor_sum(b)
+            return float(get_tensor_data(s))
+
+        # Analytical
+        a = create_tensor(a_data.copy())
+        b = a.tanh()
+        s = run_tensor_sum(b)
+        run_tensor_backward(s)
+        grad_ana = get_tensor_grad(a).copy()
+
+        # Numerical
+        grad_num = numerical_gradient(f, a_data.copy())
+
+        np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-6)
 
 
 class TestMatrixChain:
