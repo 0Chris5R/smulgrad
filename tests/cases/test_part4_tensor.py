@@ -377,6 +377,28 @@ class TestTensorSum:
         grad_num = numerical_gradient(f, a_data.copy())
         np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-6)
 
+    def test_sum_backward_axis0_nonsquare(self):
+        """Test sum backward along axis 0 on non-square matrix.
+
+        This test exposes a bug where axis=0 is treated as falsy in Python,
+        causing incorrect gradient broadcasting.
+        """
+        a_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])  # 2x3
+
+        def f(x):
+            a = create_tensor(x.copy())
+            b = run_tensor_sum(a, axis=0)  # [5, 7, 9] shape (3,)
+            s = run_tensor_sum(b)
+            return float(get_tensor_data(s))
+
+        a = create_tensor(a_data.copy())
+        b = run_tensor_sum(a, axis=0)
+        run_tensor_backward(b)
+        grad_ana = get_tensor_grad(a).copy()
+
+        # All gradients should be 1
+        np.testing.assert_array_equal(grad_ana, np.ones((2, 3)))
+
 
 class TestTensorMean:
     """Test mean reduction (2 points)."""
@@ -430,6 +452,28 @@ class TestTensorMean:
 
         grad_num = numerical_gradient(f, a_data.copy())
         np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-6)
+
+    def test_mean_backward_axis0_nonsquare(self):
+        """Test mean backward along axis 0 on non-square matrix.
+
+        This test exposes a bug where axis=0 is treated as falsy in Python,
+        causing incorrect gradient broadcasting.
+        """
+        a_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])  # 2x3
+
+        def f(x):
+            a = create_tensor(x.copy())
+            b = run_tensor_mean(a, axis=0)  # [2.5, 3.5, 4.5] shape (3,)
+            s = run_tensor_sum(b)
+            return float(get_tensor_data(s))
+
+        a = create_tensor(a_data.copy())
+        b = run_tensor_mean(a, axis=0)
+        run_tensor_backward(b)
+        grad_ana = get_tensor_grad(a).copy()
+
+        # Each element contributes 1/2 to its column's mean
+        np.testing.assert_allclose(grad_ana, np.full((2, 3), 0.5))
 
 
 class TestTensorMax:
@@ -489,6 +533,39 @@ class TestTensorMax:
 
         a = create_tensor(a_data.copy())
         b = run_tensor_max(a, axis=1, keepdims=True)
+        s = run_tensor_sum(b)
+        run_tensor_backward(s)
+        grad_ana = get_tensor_grad(a).copy()
+
+        grad_num = numerical_gradient(f, a_data.copy())
+        np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-6)
+
+    def test_max_backward_axis1(self):
+        """Test max backward along axis 1.
+
+        This test exposes a bug in the max backward where the mask comparison
+        fails when axis is not None and keepdims=False, because the reduced
+        value doesn't broadcast correctly against the original data.
+        """
+        a = create_tensor(np.array([[1.0, 4.0], [3.0, 2.0]]))
+        b = run_tensor_max(a, axis=1)  # [4, 3]
+        run_tensor_backward(b)
+        # Max of row 0 is at col 1 (value 4), max of row 1 is at col 0 (value 3)
+        expected = np.array([[0.0, 1.0], [1.0, 0.0]])
+        np.testing.assert_array_equal(get_tensor_grad(a), expected)
+
+    def test_max_backward_axis1_numerical(self):
+        """Test max backward along axis 1 with numerical gradient check."""
+        a_data = np.array([[1.0, 4.0, 2.0], [3.0, 2.0, 5.0]])
+
+        def f(x):
+            a = create_tensor(x.copy())
+            b = run_tensor_max(a, axis=1)  # [4, 5]
+            s = run_tensor_sum(b)
+            return float(get_tensor_data(s))
+
+        a = create_tensor(a_data.copy())
+        b = run_tensor_max(a, axis=1)
         s = run_tensor_sum(b)
         run_tensor_backward(s)
         grad_ana = get_tensor_grad(a).copy()

@@ -173,7 +173,7 @@ class Tensor():
         return grad.reshape(in_shape[ndim_diff:])
 
     def _broadcast(self, grad, axes):
-        if axes:
+        if axes is not None:
             grad = np.expand_dims(grad, axes)
         else:
             additional_dims = self.data.ndim - grad.ndim
@@ -348,7 +348,12 @@ class Tensor():
         out = Tensor(value, _op="max", _children=(self,))
 
         def _backward():
-            mask = self.data == value
+            if keepdims is False:
+                value_mask = self._broadcast(value, axis)
+            else:
+                value_mask = value
+
+            mask = self.data == value_mask
             count = mask.sum(axis=axis, keepdims=True)
             if keepdims is False:
                 gradient = self._broadcast(out.grad, axis)
