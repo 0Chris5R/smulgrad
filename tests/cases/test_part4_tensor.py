@@ -96,7 +96,8 @@ class TestTensorElementwise:
 
         # grad_a = upstream_grad * b, grad_b = upstream_grad * a
         np.testing.assert_array_equal(get_tensor_grad(a), get_tensor_data(b))
-        np.testing.assert_array_equal(get_tensor_grad(b), np.array([[1.0, 2.0], [3.0, 4.0]]))
+        np.testing.assert_array_equal(get_tensor_grad(
+            b), np.array([[1.0, 2.0], [3.0, 4.0]]))
 
     def test_tensor_elementwise_chain(self):
         """Test chain of element-wise operations."""
@@ -185,8 +186,10 @@ class TestTensorBackward:
         d = run_tensor_add(c, a)  # [3, 8, 15]
         run_tensor_backward(d)
         # d = a*b + a, so dd/da = b + 1, dd/db = a
-        np.testing.assert_array_equal(get_tensor_grad(a), np.array([3.0, 4.0, 5.0]))
-        np.testing.assert_array_equal(get_tensor_grad(b), np.array([1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(
+            get_tensor_grad(a), np.array([3.0, 4.0, 5.0]))
+        np.testing.assert_array_equal(
+            get_tensor_grad(b), np.array([1.0, 2.0, 3.0]))
 
     def test_tensor_backward_grad_shape(self):
         """Test that backward initializes gradient with correct shape."""
@@ -220,8 +223,10 @@ class TestTensorBackward:
         grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
         grad_b_num = numerical_gradient(lambda x: f(a_data, x), b_data.copy())
 
-        np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-6)
-        np.testing.assert_allclose(grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-6)
+        np.testing.assert_allclose(
+            grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-6)
+        np.testing.assert_allclose(
+            grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-6)
 
 
 class TestTensorBroadcast:
@@ -229,7 +234,8 @@ class TestTensorBroadcast:
 
     def test_broadcast_add_row_vector(self):
         """Test broadcasting a row vector."""
-        a = create_tensor(np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]))  # (2, 3)
+        a = create_tensor(
+            np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]))  # (2, 3)
         b = create_tensor(np.array([10.0, 20.0, 30.0]))  # (3,)
         c = run_tensor_add(a, b)
         expected = np.array([[11.0, 22.0, 33.0], [14.0, 25.0, 36.0]])
@@ -237,7 +243,8 @@ class TestTensorBroadcast:
 
     def test_broadcast_add_row_vector_backward(self):
         """Test backward pass with row vector broadcasting."""
-        a = create_tensor(np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]))  # (2, 3)
+        a = create_tensor(
+            np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]))  # (2, 3)
         b = create_tensor(np.array([10.0, 20.0, 30.0]))  # (3,)
         c = run_tensor_add(a, b)
         run_tensor_backward(c)
@@ -245,11 +252,13 @@ class TestTensorBroadcast:
         # grad_a has shape (2, 3), all ones
         np.testing.assert_array_equal(get_tensor_grad(a), np.ones((2, 3)))
         # grad_b has shape (3,), summed over axis 0 -> [2, 2, 2]
-        np.testing.assert_array_equal(get_tensor_grad(b), np.array([2.0, 2.0, 2.0]))
+        np.testing.assert_array_equal(
+            get_tensor_grad(b), np.array([2.0, 2.0, 2.0]))
 
     def test_broadcast_add_column_vector(self):
         """Test broadcasting a column vector."""
-        a = create_tensor(np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]))  # (2, 3)
+        a = create_tensor(
+            np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]))  # (2, 3)
         b = create_tensor(np.array([[10.0], [20.0]]))  # (2, 1)
         c = run_tensor_add(a, b)
         expected = np.array([[11.0, 12.0, 13.0], [24.0, 25.0, 26.0]])
@@ -257,14 +266,16 @@ class TestTensorBroadcast:
 
     def test_broadcast_add_column_vector_backward(self):
         """Test backward pass with column vector broadcasting."""
-        a = create_tensor(np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]))  # (2, 3)
+        a = create_tensor(
+            np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]))  # (2, 3)
         b = create_tensor(np.array([[10.0], [20.0]]))  # (2, 1)
         c = run_tensor_add(a, b)
         run_tensor_backward(c)
 
         np.testing.assert_array_equal(get_tensor_grad(a), np.ones((2, 3)))
         # grad_b summed over axis 1 -> [[3], [3]]
-        np.testing.assert_array_equal(get_tensor_grad(b), np.array([[3.0], [3.0]]))
+        np.testing.assert_array_equal(
+            get_tensor_grad(b), np.array([[3.0], [3.0]]))
 
     def test_broadcast_mul_backward(self):
         """Test multiplication backward with broadcasting."""
@@ -274,7 +285,8 @@ class TestTensorBroadcast:
         run_tensor_backward(c)
 
         # grad_a = b broadcasted = [[2, 3], [2, 3]]
-        np.testing.assert_array_equal(get_tensor_grad(a), np.array([[2.0, 3.0], [2.0, 3.0]]))
+        np.testing.assert_array_equal(get_tensor_grad(
+            a), np.array([[2.0, 3.0], [2.0, 3.0]]))
         # grad_b = sum of a over axis 0 = [4, 6]
         np.testing.assert_array_equal(get_tensor_grad(b), np.array([4.0, 6.0]))
 
@@ -327,7 +339,8 @@ class TestTensorSum:
         a = create_tensor(np.array([[1.0, 2.0], [3.0, 4.0]]))
         b = run_tensor_sum(a, axis=1, keepdims=True)
         assert get_tensor_data(b).shape == (2, 1)
-        np.testing.assert_array_equal(get_tensor_data(b), np.array([[3.0], [7.0]]))
+        np.testing.assert_array_equal(
+            get_tensor_data(b), np.array([[3.0], [7.0]]))
 
     def test_sum_backward_all(self):
         """Test sum backward (all elements)."""
@@ -335,7 +348,8 @@ class TestTensorSum:
         b = run_tensor_sum(a)
         run_tensor_backward(b)
         # Check both value and shape - gradient must be explicitly shaped
-        assert get_tensor_grad(a).shape == (2, 2), "Gradient shape must match input shape"
+        assert get_tensor_grad(a).shape == (
+            2, 2), "Gradient shape must match input shape"
         np.testing.assert_array_equal(get_tensor_grad(a), np.ones((2, 2)))
 
     def test_sum_backward_axis(self):
@@ -344,7 +358,8 @@ class TestTensorSum:
         b = run_tensor_sum(a, axis=1)  # [6, 15]
         run_tensor_backward(b)
         # Check both value and shape
-        assert get_tensor_grad(a).shape == (2, 3), "Gradient shape must match input shape"
+        assert get_tensor_grad(a).shape == (
+            2, 3), "Gradient shape must match input shape"
         np.testing.assert_array_equal(get_tensor_grad(a), np.ones((2, 3)))
 
     def test_sum_backward_all_through_chain(self):
@@ -356,7 +371,8 @@ class TestTensorSum:
         run_tensor_backward(s)
         # grad_a = b (element-wise), grad_b = a
         np.testing.assert_array_equal(get_tensor_grad(a), get_tensor_data(b))
-        np.testing.assert_array_equal(get_tensor_grad(b), np.array([[1.0, 2.0], [3.0, 4.0]]))
+        np.testing.assert_array_equal(get_tensor_grad(
+            b), np.array([[1.0, 2.0], [3.0, 4.0]]))
 
     def test_sum_keepdims_backward(self):
         """Test sum backward with keepdims=True."""
@@ -376,6 +392,28 @@ class TestTensorSum:
 
         grad_num = numerical_gradient(f, a_data.copy())
         np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-6)
+
+    def test_sum_backward_axis0_nonsquare(self):
+        """Test sum backward along axis 0 on non-square matrix.
+
+        This test exposes a bug where axis=0 is treated as falsy in Python,
+        causing incorrect gradient broadcasting.
+        """
+        a_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])  # 2x3
+
+        def f(x):
+            a = create_tensor(x.copy())
+            b = run_tensor_sum(a, axis=0)  # [5, 7, 9] shape (3,)
+            s = run_tensor_sum(b)
+            return float(get_tensor_data(s))
+
+        a = create_tensor(a_data.copy())
+        b = run_tensor_sum(a, axis=0)
+        run_tensor_backward(b)
+        grad_ana = get_tensor_grad(a).copy()
+
+        # All gradients should be 1
+        np.testing.assert_array_equal(grad_ana, np.ones((2, 3)))
 
 
 class TestTensorMean:
@@ -399,8 +437,10 @@ class TestTensorMean:
         b = run_tensor_mean(a)
         run_tensor_backward(b)
         # Check shape and value - gradient is 1/n for each element
-        assert get_tensor_grad(a).shape == (2, 2), "Gradient shape must match input shape"
-        np.testing.assert_array_equal(get_tensor_grad(a), np.full((2, 2), 0.25))
+        assert get_tensor_grad(a).shape == (
+            2, 2), "Gradient shape must match input shape"
+        np.testing.assert_array_equal(
+            get_tensor_grad(a), np.full((2, 2), 0.25))
 
     def test_mean_backward_axis(self):
         """Test mean backward along axis (direct, no sum)."""
@@ -408,9 +448,11 @@ class TestTensorMean:
         b = run_tensor_mean(a, axis=1)  # [2, 5]
         run_tensor_backward(b)
         # Check shape - gradient must be broadcast back to original shape
-        assert get_tensor_grad(a).shape == (2, 3), "Gradient shape must match input shape"
+        assert get_tensor_grad(a).shape == (
+            2, 3), "Gradient shape must match input shape"
         # Each element contributes 1/3 to its row's mean
-        np.testing.assert_allclose(get_tensor_grad(a), np.full((2, 3), 1.0/3.0))
+        np.testing.assert_allclose(
+            get_tensor_grad(a), np.full((2, 3), 1.0/3.0))
 
     def test_mean_keepdims_backward(self):
         """Test mean backward with keepdims=True."""
@@ -430,6 +472,28 @@ class TestTensorMean:
 
         grad_num = numerical_gradient(f, a_data.copy())
         np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-6)
+
+    def test_mean_backward_axis0_nonsquare(self):
+        """Test mean backward along axis 0 on non-square matrix.
+
+        This test exposes a bug where axis=0 is treated as falsy in Python,
+        causing incorrect gradient broadcasting.
+        """
+        a_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])  # 2x3
+
+        def f(x):
+            a = create_tensor(x.copy())
+            b = run_tensor_mean(a, axis=0)  # [2.5, 3.5, 4.5] shape (3,)
+            s = run_tensor_sum(b)
+            return float(get_tensor_data(s))
+
+        a = create_tensor(a_data.copy())
+        b = run_tensor_mean(a, axis=0)
+        run_tensor_backward(b)
+        grad_ana = get_tensor_grad(a).copy()
+
+        # Each element contributes 1/2 to its column's mean
+        np.testing.assert_allclose(grad_ana, np.full((2, 3), 0.5))
 
 
 class TestTensorMax:
@@ -453,7 +517,8 @@ class TestTensorMax:
         b = run_tensor_max(a)
         run_tensor_backward(b)
         # Check shape and value - only max element gets gradient
-        assert get_tensor_grad(a).shape == (2, 2), "Gradient shape must match input shape"
+        assert get_tensor_grad(a).shape == (
+            2, 2), "Gradient shape must match input shape"
         expected = np.array([[0.0, 1.0], [0.0, 0.0]])
         np.testing.assert_array_equal(get_tensor_grad(a), expected)
 
@@ -463,7 +528,8 @@ class TestTensorMax:
         b = run_tensor_max(a, axis=0)  # [3, 4]
         run_tensor_backward(b)
         # Check shape - gradient must be broadcast back to original shape
-        assert get_tensor_grad(a).shape == (2, 2), "Gradient shape must match input shape"
+        assert get_tensor_grad(a).shape == (
+            2, 2), "Gradient shape must match input shape"
         # Max of column 0 is at row 1, max of column 1 is at row 0
         expected = np.array([[0.0, 1.0], [1.0, 0.0]])
         np.testing.assert_array_equal(get_tensor_grad(a), expected)
@@ -496,6 +562,39 @@ class TestTensorMax:
         grad_num = numerical_gradient(f, a_data.copy())
         np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-6)
 
+    def test_max_backward_axis1(self):
+        """Test max backward along axis 1.
+
+        This test exposes a bug in the max backward where the mask comparison
+        fails when axis is not None and keepdims=False, because the reduced
+        value doesn't broadcast correctly against the original data.
+        """
+        a = create_tensor(np.array([[1.0, 4.0], [3.0, 2.0]]))
+        b = run_tensor_max(a, axis=1)  # [4, 3]
+        run_tensor_backward(b)
+        # Max of row 0 is at col 1 (value 4), max of row 1 is at col 0 (value 3)
+        expected = np.array([[0.0, 1.0], [1.0, 0.0]])
+        np.testing.assert_array_equal(get_tensor_grad(a), expected)
+
+    def test_max_backward_axis1_numerical(self):
+        """Test max backward along axis 1 with numerical gradient check."""
+        a_data = np.array([[1.0, 4.0, 2.0], [3.0, 2.0, 5.0]])
+
+        def f(x):
+            a = create_tensor(x.copy())
+            b = run_tensor_max(a, axis=1)  # [4, 5]
+            s = run_tensor_sum(b)
+            return float(get_tensor_data(s))
+
+        a = create_tensor(a_data.copy())
+        b = run_tensor_max(a, axis=1)
+        s = run_tensor_sum(b)
+        run_tensor_backward(s)
+        grad_ana = get_tensor_grad(a).copy()
+
+        grad_num = numerical_gradient(f, a_data.copy())
+        np.testing.assert_allclose(grad_ana, grad_num, rtol=1e-4, atol=1e-6)
+
 
 class TestTensorReshape:
     """Test reshape operation (2 points)."""
@@ -504,7 +603,8 @@ class TestTensorReshape:
         """Test reshaping to 1D."""
         a = create_tensor(np.array([[1.0, 2.0], [3.0, 4.0]]))
         b = run_tensor_reshape(a, (4,))
-        np.testing.assert_array_equal(get_tensor_data(b), np.array([1.0, 2.0, 3.0, 4.0]))
+        np.testing.assert_array_equal(
+            get_tensor_data(b), np.array([1.0, 2.0, 3.0, 4.0]))
 
     def test_reshape_2d(self):
         """Test reshaping to different 2D shape."""
@@ -551,7 +651,8 @@ class TestTensorReshape:
         grad_a_ana = get_tensor_grad(a).copy()
 
         grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
-        np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-6)
+        np.testing.assert_allclose(
+            grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-6)
 
     def test_reshape_gradient_accumulation(self):
         """Test reshape backward accumulates gradients when tensor used in multiple paths."""
@@ -593,7 +694,8 @@ class TestTensorTranspose:
 
     def test_transpose_backward(self):
         """Test transpose backward pass."""
-        a = create_tensor(np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]))  # (3, 2)
+        a = create_tensor(
+            np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]))  # (3, 2)
         b = run_tensor_transpose(a)  # (2, 3)
         c = run_tensor_sum(b)
         run_tensor_backward(c)
@@ -657,8 +759,10 @@ class TestTensorNumericalGradient:
         grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
         grad_b_num = numerical_gradient(lambda x: f(a_data, x), b_data.copy())
 
-        np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-6)
-        np.testing.assert_allclose(grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-6)
+        np.testing.assert_allclose(
+            grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-6)
+        np.testing.assert_allclose(
+            grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-6)
 
     def test_numerical_gradient_mul_broadcast(self):
         """Verify gradient of broadcasted multiplication numerically."""
@@ -686,7 +790,7 @@ class TestTensorNumericalGradient:
         grad_a_num = numerical_gradient(lambda x: f(x, b_data), a_data.copy())
         grad_b_num = numerical_gradient(lambda x: f(a_data, x), b_data.copy())
 
-        np.testing.assert_allclose(grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-5)
-        np.testing.assert_allclose(grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-5)
-
-
+        np.testing.assert_allclose(
+            grad_a_ana, grad_a_num, rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(
+            grad_b_ana, grad_b_num, rtol=1e-4, atol=1e-5)
