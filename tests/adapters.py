@@ -560,3 +560,27 @@ def run_gradient_check(
     """
     from smulgrad.nn import check_gradients
     return check_gradients(f, input, eps, tol)
+
+
+# =============================================================================
+# Bonus: MNIST Training
+# =============================================================================
+
+
+def run_mnist_training(
+    # TODO: Change these None values to achieve >95% test accuracy
+    hidden_size: int = 128,
+    learning_rate: float = 0.1,
+    batch_size: int = 128,
+    epochs: int = 10
+) -> tuple:
+    """
+    Train an MLP on the MNIST dataset.
+
+    Returns:
+        Tuple of (trained_mlp, test_accuracy)
+        - trained_mlp: The trained MLP model
+        - test_accuracy: Float between 0 and 1
+    """
+    from smulgrad.mnist import train_mnist
+    return train_mnist(hidden_size, learning_rate, batch_size, epochs)

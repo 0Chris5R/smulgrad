@@ -1096,86 +1096,90 @@ Implement \code{check\_gradients(f, input, epsilon=1e-5, tolerance=1e-4)} that:
 
 \newpage
 %==============================================================================
-\section{Grading Summary}
+\section{Bonus: MNIST Handwritten Digit Recognition}
+\points{5}
 %==============================================================================
 
-\begin{table}[h]
-\centering
-\begin{tabular}{llc}
-\toprule
-\textbf{Test} & \textbf{Description} & \textbf{Points} \\
-\midrule
-\multicolumn{2}{l}{\textbf{Part 1: Scalars}} & \textbf{15} \\
-test\_value\_creation & Value class creation & 2 \\
-test\_value\_add & Addition & 2 \\
-test\_value\_mul & Multiplication & 2 \\
-test\_value\_neg\_sub & Negation and subtraction & 3 \\
-test\_value\_pow & Power operation & 3 \\
-test\_value\_div & Division & 3 \\
-\midrule
-\multicolumn{2}{l}{\textbf{Part 2: Backward}} & \textbf{20} \\
-test\_backward\_add & Addition backward & 3 \\
-test\_backward\_mul & Multiplication backward & 3 \\
-test\_backward\_ops & Other operations backward & 4 \\
-test\_backward\_full & Full backward pass & 5 \\
-test\_grad\_accumulation & Gradient accumulation & 3 \\
-test\_grad\_of\_grad & Second derivatives (bonus) & 2 \\
-\midrule
-\multicolumn{2}{l}{\textbf{Part 3: Operations}} & \textbf{15} \\
-test\_relu & ReLU activation & 3 \\
-test\_exp & Exponential & 3 \\
-test\_log & Natural logarithm & 3 \\
-test\_tanh & Hyperbolic tangent & 3 \\
-test\_complex\_expr & Complex expressions & 3 \\
-\midrule
-\multicolumn{2}{l}{\textbf{Part 4: Tensors}} & \textbf{22} \\
-test\_tensor\_creation & Tensor creation & 2 \\
-test\_tensor\_elementwise & Element-wise operations & 3 \\
-test\_tensor\_backward & Backward pass & 2 \\
-test\_tensor\_broadcast & Broadcasting & 4 \\
-test\_tensor\_sum & Sum reduction & 3 \\
-test\_tensor\_mean & Mean reduction & 2 \\
-test\_tensor\_max & Max reduction & 3 \\
-test\_tensor\_reshape & Reshape & 2 \\
-test\_tensor\_transpose & Transpose & 1 \\
-\midrule
-\multicolumn{2}{l}{\textbf{Part 5: Matrix Ops}} & \textbf{17} \\
-test\_matmul & Matrix multiplication & 5 \\
-test\_batched\_matmul & Batched matmul & 4 \\
-test\_matvec & Matrix-vector products & 3 \\
-test\_tensor\_activations & Tensor activations & 2 \\
-test\_matrix\_chain & Chain of operations & 3 \\
-\midrule
-\multicolumn{2}{l}{\textbf{Part 6: Neural Networks}} & \textbf{15} \\
-test\_linear\_layer & Linear layer & 2 \\
-test\_softmax & Softmax function & 3 \\
-test\_cross\_entropy & Cross-entropy loss & 3 \\
-test\_sgd & SGD optimizer & 2 \\
-test\_mlp\_training & MLP training & 3 \\
-test\_gradient\_check & Gradient checking & 2 \\
-\midrule
-\multicolumn{2}{l}{\textbf{Total}} & \textbf{104} \\
-\bottomrule
-\end{tabular}
-\end{table}
+Train your autodiff engine on real handwritten digits from the MNIST dataset. This is the ultimate validation that your implementation works on a real machine learning benchmark with 60,000 training images.
+
+\subsection{The Challenge}
+
+MNIST is a dataset of 70,000 handwritten digits (0--9), each represented as a 28$\times$28 grayscale image. Your task:
+\begin{itemize}
+    \item Create an MLP with architecture: $784 \to \text{hidden} \to 10$
+    \item Implement a training loop with mini-batch gradient descent
+    \item Train on 60,000 images, test on 10,000 images
+    \item Achieve $>$95\% test accuracy
+\end{itemize}
+
+We provide utility functions for loading and batching data. You implement the training.
+
+\begin{problembox}[mnist\_training]{Train on MNIST handwritten digits \points{5}}
+
+Implement the \code{train\_mnist} adapter function that:
+\begin{enumerate}
+    \item Creates an MLP suitable for MNIST (784 inputs, 10 outputs)
+    \item Trains it using SGD with mini-batches
+    \item Returns the trained model and final test accuracy
+\end{enumerate}
+
+\begin{lstlisting}[style=pythonsimple]
+from smulgrad.engine import Tensor
+from smulgrad.nn import MLP, softmax, cross_entropy, SGD
+from tests.mnist_utils import load_mnist, mini_batch_iterator
+
+def train_mnist(hidden_size, learning_rate, batch_size, epochs):
+    train_X, train_y, test_X, test_y = load_mnist()
+
+    # TODO: Create model
+
+    # TODO: Training loop
+
+    # TODO: Compute and return test accuracy
+    return mlp, accuracy
+\end{lstlisting}
+
+\textbf{Grading:}
+\begin{itemize}
+    \item 3 points: Training loop works, loss decreases over epochs
+    \item 2 points: Test accuracy $>$95\%
+\end{itemize}
+
+\deliverable{Implement the adapter \code{train\_mnist} in \code{tests/adapters.py}. Run \code{uv run pytest -k TestMNIST} to verify.}
+
+\end{problembox}
+
+\subsection{Interactive Demo}
+
+After completing this exercise, run the full interactive demo to visualize your network learning:
+
+\begin{lstlisting}[style=bashstyle]
+uv run python tests/cases/demo_mnist.py
+\end{lstlisting}
+
+This shows:
+\begin{itemize}
+    \item Sample digits from the training set
+    \item Live training progress with loss and accuracy
+    \item Training curves (loss and accuracy over epochs)
+    \item Model predictions on test digits
+    \item Comparison of correct vs incorrect predictions
+\end{itemize}
 
 \newpage
 %==============================================================================
-\section{Bonus Challenges}
+\section{Additional Bonus Challenges}
 %==============================================================================
 
-Once you've completed the main assignment, try these extensions:
+Once you've completed the main assignment and MNIST, try these extensions:
 
-\subsection*{Bonus 1: More Optimizers \hfill 5 points}
+\subsection*{Bonus: More Optimizers \hfill 5 points}
 Implement Adam optimizer with momentum and adaptive learning rates.
 
-\subsection*{Bonus 2: Convolutional Operations \hfill 10 points}
+\subsection*{Bonus: Convolutional Operations \hfill 10 points}
 Implement 2D convolution with correct gradients.
 
-\subsection*{Bonus 3: MNIST Training \hfill 5 points}
-Train your network on real MNIST data and achieve $>$95\% accuracy.
-
-\subsection*{Bonus 4: Visualization \hfill 3 points}
+\subsection*{Bonus: Visualization \hfill 3 points}
 Implement a function to visualize computational graphs using graphviz.
 
 %==============================================================================
